@@ -74,3 +74,19 @@ CLAUDE.md
 
 # cursor
 .cursor*
+
+# Local MCP config (contains credentials)
+mcp-config.json
+
+# Claude skill - temp/cache files
+claude-skill/mcp-config.json
+claude-skill/__pycache__/
+claude-skill/*.bin
+claude-skill/*.md.bak
+claude-skill/page_content*.txt
+claude-skill/page_content*.json
+claude-skill/comments_*.json
+claude-skill/comments_*.md
+claude-skill/sel_*.txt
+claude-skill/nul
+claude-skill/raw_response.bin

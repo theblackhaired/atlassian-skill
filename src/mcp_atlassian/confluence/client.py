@@ -90,3 +90,81 @@ class ConfluenceClient:
             Tuple of (processed_html, processed_markdown)
         """
         return self.preprocessor.process_html_content(html_content, space_key)
+
+    def get_notifications(
+        self,
+        limit: int = 50,
+        after: int | None = None,
+        before: int | None = None,
+        include_read: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Get user notifications from Confluence workbox.
+
+        Args:
+            limit: Maximum number of notifications (default 50)
+            after: Return notifications after specified ID
+            before: Return notifications before specified ID
+            include_read: Include read notifications (default True)
+
+        Returns:
+            List of notifications with fields: id, title, description, application,
+            entity, action, created, updated, status, read, metadata
+
+        Raises:
+            HTTPError: If the API request fails
+        """
+        params = {"limit": limit}
+        if after:
+            params["after"] = after
+        if before:
+            params["before"] = before
+
+        # Use the existing session directly since atlassian-python-api
+        # doesn't support mywork API
+        url = f"{self.config.url}/rest/mywork/latest/notification"
+
+        response = self.confluence._session.get(url, params=params)
+        response.raise_for_status()
+        notifications = response.json()
+
+        if not include_read:
+            notifications = [n for n in notifications if not n.get("read", False)]
+
+        return notifications
+
+    def get_notification_count(self) -> dict[str, Any]:
+        """Get count of unread notifications.
+
+        Returns:
+            Dict with fields: count (int), timeout (int for polling)
+
+        Raises:
+            HTTPError: If the API request fails
+        """
+        url = f"{self.config.url}/rest/mywork/latest/status"
+
+        response = self.confluence._session.get(url)
+        response.raise_for_status()
+        return response.json()
+
+    def mark_notification_read(self, notification_id: int) -> bool:
+        """Mark notification as read.
+
+        Args:
+            notification_id: ID of the notification
+
+        Returns:
+            True if successful
+
+        Raises:
+            HTTPError: If the API request fails
+        """
+        url = f"{self.config.url}/rest/mywork/latest/notification/read"
+
+        response = self.confluence._session.put(
+            url,
+            data=str(notification_id),
+            headers={"Content-Type": "application/json"},
+        )
+        response.raise_for_status()
+        return True

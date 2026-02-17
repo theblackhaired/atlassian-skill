@@ -455,6 +455,41 @@ async def list_tools() -> list[Tool]:
                         "required": ["page_id"],
                     },
                 ),
+                Tool(
+                    name="confluence_get_notifications",
+                    description="Get user notifications from Confluence workbox. Returns list of notifications with title, description, status, read state, and metadata.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of notifications to return (default: 50)",
+                                "default": 50,
+                            },
+                            "after": {
+                                "type": "integer",
+                                "description": "Return notifications after this ID (for pagination)",
+                            },
+                            "before": {
+                                "type": "integer",
+                                "description": "Return notifications before this ID (for pagination)",
+                            },
+                            "include_read": {
+                                "type": "boolean",
+                                "description": "Include already read notifications (default: true)",
+                                "default": True,
+                            },
+                        },
+                    },
+                ),
+                Tool(
+                    name="confluence_get_notification_count",
+                    description="Get count of unread Confluence notifications. Returns count and polling timeout.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                    },
+                ),
             ]
         )
 
@@ -762,6 +797,41 @@ async def list_tools() -> list[Tool]:
                             },
                         },
                         "required": ["issue_key", "target_dir"],
+                    },
+                ),
+                Tool(
+                    name="jira_get_notifications",
+                    description="Get user notifications from Jira. Uses mywork API if available, falls back to JQL search for recent activity on watched/assigned issues.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of notifications to return (default: 50)",
+                                "default": 50,
+                            },
+                            "after": {
+                                "type": "integer",
+                                "description": "Return notifications after this ID (for pagination)",
+                            },
+                            "before": {
+                                "type": "integer",
+                                "description": "Return notifications before this ID (for pagination)",
+                            },
+                            "include_read": {
+                                "type": "boolean",
+                                "description": "Include already read notifications (default: true)",
+                                "default": True,
+                            },
+                        },
+                    },
+                ),
+                Tool(
+                    name="jira_get_notification_count",
+                    description="Get count of unread Jira notifications. Uses mywork API if available, falls back to counting recently updated issues.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
                     },
                 ),
                 Tool(
@@ -1310,6 +1380,29 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
                 )
             ]
 
+        elif name == "confluence_get_notifications" and ctx and ctx.confluence:
+            if not ctx or not ctx.confluence:
+                raise ValueError("Confluence is not configured.")
+
+            limit = arguments.get("limit", 50)
+            after = arguments.get("after")
+            before = arguments.get("before")
+            include_read = arguments.get("include_read", True)
+            result = ctx.confluence.get_notifications(
+                limit=limit,
+                after=after,
+                before=before,
+                include_read=include_read,
+            )
+            return [TextContent(type="text", text=json.dumps(result, default=str))]
+
+        elif name == "confluence_get_notification_count" and ctx and ctx.confluence:
+            if not ctx or not ctx.confluence:
+                raise ValueError("Confluence is not configured.")
+
+            result = ctx.confluence.get_notification_count()
+            return [TextContent(type="text", text=json.dumps(result, default=str))]
+
         elif name == "confluence_create_page":
             if not ctx or not ctx.confluence:
                 raise ValueError("Confluence is not configured.")
@@ -1697,6 +1790,30 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
                 TextContent(
                     type="text", text=json.dumps(result, indent=2, ensure_ascii=False)
                 )
+            ]
+
+        elif name == "jira_get_notifications" and ctx and ctx.jira:
+            if not ctx or not ctx.jira:
+                raise ValueError("Jira is not configured.")
+
+            limit = arguments.get("limit", 50)
+            after = arguments.get("after")
+            before = arguments.get("before")
+            include_read = arguments.get("include_read", True)
+            result = ctx.jira.get_notifications(
+                limit=limit,
+                after=after,
+                before=before,
+                include_read=include_read,
+            )
+            return [TextContent(type="text", text=json.dumps(result, default=str))]
+
+        elif name == "jira_get_notification_count" and ctx and ctx.jira:
+            if not ctx or not ctx.jira:
+                raise ValueError("Jira is not configured.")
+
+            result = ctx.jira.get_notification_count()
+            return [TextContent(type="text", text=json.dumps(result, default=str))
             ]
 
         elif name == "jira_get_agile_boards" and ctx and ctx.jira:
