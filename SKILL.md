@@ -21,8 +21,7 @@ Direct REST API client for Jira and Confluence. No external dependencies -- uses
 - `confluence_get_inline_comments`: Get inline (in-text) comments for a page
 
 **Notification Operations:**
-- `confluence_get_notifications`: Get user notifications from workbox (supports limit, include_read params)
-- `confluence_get_notification_count`: Get count of unread notifications
+- `atlassian_get_notifications`: Get user notifications from Atlassian workbox (Jira + Confluence)
 
 **Write Operations:**
 - `confluence_create_page`: Create a new Confluence page
@@ -161,21 +160,14 @@ cd .claude/skills/atlassian
 python cli.py --call '{"tool": "jira_get_agile_boards", "arguments": {"project_key": "MYPROJ"}}'
 ```
 
-### Example 6: Get Confluence Notifications
+### Example 6: Get Atlassian Notifications
 
 ```bash
 cd .claude/skills/atlassian
-python cli.py --call '{"tool": "confluence_get_notifications", "arguments": {"limit": 20, "include_read": false}}'
+python cli.py --call '{"tool": "atlassian_get_notifications", "arguments": {"limit": 20, "include_read": false}}'
 ```
 
-### Example 7: Get Unread Notification Count
-
-```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "confluence_get_notification_count", "arguments": {}}'
-```
-
-### Example 8: Get Inline Comments
+### Example 7: Get Inline Comments
 
 ```bash
 cd .claude/skills/atlassian
@@ -189,14 +181,14 @@ cd .claude/skills/atlassian
 python cli.py --call '{"tool": "confluence_get_inline_comments", "arguments": {"page_id": "125244512"}}'
 ```
 
-### Example 9: Create Jira Issue
+### Example 8: Create Jira Issue
 
 ```bash
 cd .claude/skills/atlassian
 python cli.py --call '{"tool": "jira_create_issue", "arguments": {"project_key": "PROJ", "summary": "New task", "issue_type": "Task"}}'
 ```
 
-### Example 10: Transition Issue
+### Example 9: Transition Issue
 
 ```bash
 cd .claude/skills/atlassian

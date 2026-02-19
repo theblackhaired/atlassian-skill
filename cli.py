@@ -204,16 +204,12 @@ TOOL_CATALOG = {
             "include_resolved": {"type": "bool", "default": False, "desc": "Include resolved comments"},
         },
     },
-    "confluence_get_notifications": {
-        "desc": "Get user notifications from Confluence workbox",
+    "atlassian_get_notifications": {
+        "desc": "Get user notifications from Atlassian workbox (Jira + Confluence)",
         "params": {
             "limit": {"type": "int", "default": 20, "desc": "Max results"},
             "include_read": {"type": "bool", "default": False, "desc": "Include read notifications"},
         },
-    },
-    "confluence_get_notification_count": {
-        "desc": "Get count of unread Confluence notifications",
-        "params": {},
     },
     "confluence_create_page": {
         "desc": "Create a new Confluence page",
@@ -543,7 +539,7 @@ def tool_confluence_get_inline_comments(conf: AtlassianClient, args: dict) -> di
     }
 
 
-def tool_confluence_get_notifications(conf: AtlassianClient, args: dict) -> dict:
+def tool_atlassian_get_notifications(conf: AtlassianClient, args: dict) -> dict:
     limit = _int(args, "limit", 20)
     include_read = _bool(args, "include_read", False)
 
@@ -552,11 +548,6 @@ def tool_confluence_get_notifications(conf: AtlassianClient, args: dict) -> dict
         params["readState"] = "unread"
 
     resp = conf.get("/rest/mywork/latest/notification/nested", params)
-    return resp
-
-
-def tool_confluence_get_notification_count(conf: AtlassianClient, args: dict) -> dict:
-    resp = conf.get("/rest/mywork/latest/notification/count")
     return resp
 
 
@@ -1061,8 +1052,7 @@ TOOL_DISPATCH = {
     "confluence_get_page_ancestors": ("confluence", tool_confluence_get_page_ancestors),
     "confluence_get_comments": ("confluence", tool_confluence_get_comments),
     "confluence_get_inline_comments": ("confluence", tool_confluence_get_inline_comments),
-    "confluence_get_notifications": ("confluence", tool_confluence_get_notifications),
-    "confluence_get_notification_count": ("confluence", tool_confluence_get_notification_count),
+    "atlassian_get_notifications": ("confluence", tool_atlassian_get_notifications),
     "confluence_create_page": ("confluence", tool_confluence_create_page),
     "confluence_update_page": ("confluence", tool_confluence_update_page),
     "confluence_delete_page": ("confluence", tool_confluence_delete_page),
