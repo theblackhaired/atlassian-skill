@@ -147,6 +147,15 @@ def load_config() -> dict:
     return result
 
 
+def _creds(cfg: dict, prefix: str) -> tuple:
+    """Return (username, token) for a service, falling back to shared creds."""
+    u = cfg.get(f"{prefix}_username", cfg.get("username"))
+    t = cfg.get(f"{prefix}_token", cfg.get("token"))
+    if not u or not t:
+        raise ValueError(f"No credentials for {prefix}: set {prefix}_username/{prefix}_token or username/token in config.json")
+    return u, t
+
+
 # ---------------------------------------------------------------------------
 # Tool Catalog
 # ---------------------------------------------------------------------------
@@ -1143,9 +1152,8 @@ def main():
     if cli_args.inline_comments:
         try:
             cfg = load_config()
-            conf = AtlassianClient(
-                cfg["confluence_url"], cfg["username"], cfg["token"]
-            )
+            cu, ct = _creds(cfg, "confluence")
+            conf = AtlassianClient(cfg["confluence_url"], cu, ct)
             result = tool_confluence_get_inline_comments(
                 conf, {"page_id": cli_args.inline_comments}
             )
@@ -1182,12 +1190,11 @@ def main():
                 print(f"Error: tool '{tool_name}' is a write operation, but config.json has read_only=true", file=sys.stderr)
                 sys.exit(1)
 
-            conf_client = AtlassianClient(
-                cfg["confluence_url"], cfg["username"], cfg["token"]
-            )
-            jira_client = AtlassianClient(
-                cfg["jira_url"], cfg["username"], cfg["token"]
-            )
+            cu, ct = _creds(cfg, "confluence")
+            conf_client = AtlassianClient(cfg["confluence_url"], cu, ct)
+
+            ju, jt = _creds(cfg, "jira")
+            jira_client = AtlassianClient(cfg["jira_url"], ju, jt)
 
             target, func = TOOL_DISPATCH[tool_name]
             client = conf_client if target == "confluence" else jira_client

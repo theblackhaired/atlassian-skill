@@ -90,18 +90,39 @@ This shows the tool's parameter schema.
 
 ## Configuration
 
-Credentials are stored in `config.json` in the skill directory:
+Create `config.json` in the skill directory:
 
 ```json
 {
-  "confluence_url": "https://rnd.iss.ru",
-  "jira_url": "https://jira.iss.ru",
-  "username": "k-gorosov",
-  "token": "..."
+  "confluence_url": "https://confluence.example.com",
+  "jira_url": "https://jira.example.com",
+  "username": "your-username",
+  "token": "your-api-token",
+  "read_only": true
 }
 ```
 
-Falls back to parsing `mcp-config.json` if `config.json` is not found.
+### Separate credentials
+
+If Jira and Confluence use different accounts:
+
+```json
+{
+  "confluence_url": "https://confluence.example.com",
+  "jira_url": "https://jira.example.com",
+  "confluence_username": "conf-user",
+  "confluence_token": "conf-token",
+  "jira_username": "jira-user",
+  "jira_token": "jira-token",
+  "read_only": false
+}
+```
+
+Fields `confluence_username`/`confluence_token` and `jira_username`/`jira_token` override shared `username`/`token`.
+
+### read_only mode
+
+Set `"read_only": true` to block all write operations (create, update, delete, transition). Read tools work normally.
 
 ## Common Examples
 
@@ -235,7 +256,7 @@ When user asks "get comments from article X":
 **Step 1:** Find local file in Confluence folder
 ```
 Glob: **/*{article_name}*.md
-Path: C:\Users\kirill.gorosov\Documents\Obsidian\ISS\Confluence
+Path: path/to/your/confluence/folder
 ```
 
 **Step 2:** Extract pageId from `Source:` URL in the file header
@@ -250,7 +271,7 @@ python cli.py --inline-comments {PAGE_ID}
 
 **Step 5:** Save formatted Markdown to:
 ```
-C:\Users\kirill.gorosov\Documents\Obsidian\ISS\00. Incoming\{Article Name} - comments.md
+path/to/output/{Article Name} - comments.md
 ```
 
 ### Section Matching Algorithm
