@@ -515,27 +515,94 @@ def tool_confluence_get_inline_comments(conf: AtlassianClient, args: dict) -> di
         raise ValueError("page_id is required")
     include_resolved = _bool(args, "include_resolved", False)
 
-    params = {"containerId": page_id, "contentType": "page"}
-    resp = conf.get("/rest/inlinecomments/1.0/comments", params)
+    # Use regular API with depth=all to get threaded comments with replies
+    expand = ",".join([
+        "body.storage",
+        "extensions.inlineProperties",
+        "extensions.resolution",
+        "history",
+        "children.comment.body.storage",
+        "children.comment.history",
+    ])
 
-    all_comments = resp if isinstance(resp, list) else resp.get("comments", [])
+    all_raw = []
+    start = 0
+    page_size = 100
+
+    while True:
+        params = {
+            "expand": expand,
+            "depth": "all",
+            "limit": str(page_size),
+            "start": str(start),
+        }
+        resp = conf.get(
+            f"/rest/api/content/{quote(page_id)}/child/comment", params
+        )
+        results = resp.get("results", [])
+        all_raw.extend(results)
+        if len(results) < page_size:
+            break
+        start += page_size
+
+    # Filter for inline comments (non-empty originalSelection)
+    all_inline = []
+    for c in all_raw:
+        inline_props = c.get("extensions", {}).get("inlineProperties", {})
+        original_selection = inline_props.get("originalSelection", "")
+        if not original_selection:
+            continue
+
+        resolution = c.get("extensions", {}).get("resolution", {})
+        is_resolved = resolution.get("status") == "resolved"
+
+        history = c.get("history", {})
+        created_by = history.get("createdBy", {})
+
+        # Build replies list
+        replies = []
+        children = (c.get("children", {}).get("comment", {})
+                     .get("results", []))
+        for ch in children:
+            ch_hist = ch.get("history", {})
+            ch_author = ch_hist.get("createdBy", {})
+            replies.append({
+                "id": int(ch.get("id", 0)),
+                "body": (ch.get("body", {}).get("storage", {})
+                         .get("value", "")),
+                "authorDisplayName": ch_author.get("displayName", ""),
+                "authorUserName": ch_author.get("username", ""),
+                "createdDate": ch_hist.get("createdDate", ""),
+            })
+
+        comment = {
+            "id": int(c.get("id", 0)),
+            "originalSelection": original_selection,
+            "markerRef": inline_props.get("markerRef", ""),
+            "body": (c.get("body", {}).get("storage", {})
+                     .get("value", "")),
+            "authorDisplayName": created_by.get("displayName", ""),
+            "authorUserName": created_by.get("username", ""),
+            "createdDate": history.get("createdDate", ""),
+            "resolved": is_resolved,
+            "replies": replies,
+        }
+        all_inline.append(comment)
+
+    open_comments = [c for c in all_inline if not c["resolved"]]
+    total_open = len(open_comments)
+    total_all = len(all_inline)
 
     if include_resolved:
-        comments = all_comments
+        out_comments = all_inline
     else:
-        comments = [
-            c for c in all_comments
-            if not c.get("resolveProperties", {}).get("resolved", False)
-        ]
+        out_comments = open_comments
 
     return {
         "pageId": page_id,
-        "totalOpen": len([
-            c for c in all_comments
-            if not c.get("resolveProperties", {}).get("resolved", False)
-        ]),
-        "totalAll": len(all_comments),
-        "comments": comments,
+        "totalOpen": total_open,
+        "totalAll": total_all,
+        "comments": out_comments,
     }
 
 
