@@ -72,16 +72,37 @@ When the user's request matches this skill's capabilities:
 **Step 3: Execute via bash:**
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "tool_name", "arguments": {...}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"tool_name\", \"arguments\": {\"param1\": \"value1\"}}"
 ```
+
+**Step 4 (если нужно обработать результат):**
+
+Не используй shell pipes (`|`) и temp-файлы (`$TEMP`, `%TEMP%`). Вместо этого — subprocess внутри Python:
+
+```bash
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python -c "
+import subprocess, json, sys
+r = subprocess.run([sys.executable, 'cli.py', '--call', json.dumps({'tool': 'tool_name', 'arguments': {'param1': 'value1'}})], capture_output=True, text=True, encoding='utf-8')
+data = json.loads(r.stdout)
+# ... обработка data ...
+print(json.dumps(result, ensure_ascii=False, indent=2))
+"
+```
+
+> **ВАЖНО — кроссплатформенность вызовов:**
+> - Всегда используй **double quotes** для JSON-аргумента `--call` (не single quotes — они ломаются в MSYS2/Git Bash на Windows)
+> - Никогда не используй **shell pipes** (`|`) для передачи вывода cli.py в другой процесс — JSON-аргументы разбиваются по пробелам
+> - Никогда не используй **temp-файлы** через `$TEMP`/`%TEMP%` — пути MSYS2 и Python не совпадают
+> - Если нужно обработать результат — используй `subprocess.run` внутри Python (см. Step 4)
 
 ## Getting Tool Details
 
 If you need detailed information about a specific tool's parameters:
 
 ```bash
-cd .claude/skills/atlassian
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --describe tool_name
 ```
 
@@ -128,72 +149,71 @@ Set `"read_only": true` to block all write operations (create, update, delete, t
 ### Example 1: Search Jira Issues
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "jira_search", "arguments": {"jql": "project = MYPROJ AND status = Open", "limit": 10}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"jira_search\", \"arguments\": {\"jql\": \"project = MYPROJ AND status = Open\", \"limit\": 10}}"
 ```
 
 ### Example 2: Get Confluence Page
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "confluence_get_page", "arguments": {"page_id": "123456"}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"confluence_get_page\", \"arguments\": {\"page_id\": \"123456\"}}"
 ```
 
 ### Example 3: Get Jira Issue Details
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "jira_get_issue", "arguments": {"issue_key": "PROJ-123"}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"jira_get_issue\", \"arguments\": {\"issue_key\": \"PROJ-123\"}}"
 ```
 
 ### Example 4: Search Confluence
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "confluence_search", "arguments": {"query": "project documentation"}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"confluence_search\", \"arguments\": {\"query\": \"project documentation\"}}"
 ```
 
 ### Example 5: Get Agile Boards
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "jira_get_agile_boards", "arguments": {"project_key": "MYPROJ"}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"jira_get_agile_boards\", \"arguments\": {\"project_key\": \"MYPROJ\"}}"
 ```
 
 ### Example 6: Get Atlassian Notifications
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "atlassian_get_notifications", "arguments": {"limit": 20, "include_read": false}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"atlassian_get_notifications\", \"arguments\": {\"limit\": 20, \"include_read\": false}}"
 ```
 
 ### Example 7: Get Inline Comments
 
 ```bash
-cd .claude/skills/atlassian
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --inline-comments 125244512
 ```
 
 Or via `--call`:
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "confluence_get_inline_comments", "arguments": {"page_id": "125244512"}}'
+python cli.py --call "{\"tool\": \"confluence_get_inline_comments\", \"arguments\": {\"page_id\": \"125244512\"}}"
 ```
 
 ### Example 8: Create Jira Issue
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "jira_create_issue", "arguments": {"project_key": "PROJ", "summary": "New task", "issue_type": "Task"}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"jira_create_issue\", \"arguments\": {\"project_key\": \"PROJ\", \"summary\": \"New task\", \"issue_type\": \"Task\"}}"
 ```
 
 ### Example 9: Transition Issue
 
 ```bash
-cd .claude/skills/atlassian
-python cli.py --call '{"tool": "jira_get_transitions", "arguments": {"issue_key": "PROJ-123"}}'
-python cli.py --call '{"tool": "jira_transition_issue", "arguments": {"issue_key": "PROJ-123", "transition_id": "31"}}'
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"jira_get_transitions\", \"arguments\": {\"issue_key\": \"PROJ-123\"}}"
+python cli.py --call "{\"tool\": \"jira_transition_issue\", \"arguments\": {\"issue_key\": \"PROJ-123\", \"transition_id\": \"31\"}}"
 ```
 
 ## Inline Comments (Direct API)
@@ -207,13 +227,14 @@ Regular `confluence_get_comments` fetches page-level comments. Inline comments u
 ### Usage
 
 ```bash
-cd .claude/skills/atlassian
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --inline-comments PAGE_ID
 ```
 
 ### Example: Get Inline Comments
 
 ```bash
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --inline-comments 125244512
 ```
 
@@ -255,7 +276,7 @@ Path: path/to/your/confluence/folder
 
 **Step 3:** Run CLI
 ```bash
-cd .claude/skills/atlassian
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --inline-comments {PAGE_ID}
 ```
 

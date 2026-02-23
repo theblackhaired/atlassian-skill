@@ -554,7 +554,10 @@ def tool_confluence_get_inline_comments(conf: AtlassianClient, args: dict) -> di
             continue
 
         resolution = c.get("extensions", {}).get("resolution", {})
-        is_resolved = resolution.get("status") == "resolved"
+        # "resolved" = explicitly resolved; "dangling" = resolved but
+        # the highlighted text was later edited and no longer matches.
+        # Both should count as resolved (matches old inline-comments API).
+        is_resolved = resolution.get("status") in ("resolved", "dangling")
 
         history = c.get("history", {})
         created_by = history.get("createdBy", {})
