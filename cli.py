@@ -105,6 +105,27 @@ class AtlassianClient:
     def delete(self, path: str) -> dict:
         return self._request("DELETE", path)
 
+    def download(self, path: str) -> bytes:
+        """Download binary content (e.g. attachment) using the same auth."""
+        url = self.base_url + path
+        req = Request(url, headers=self._headers, method="GET")
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                with urlopen(req, context=self._ssl_ctx, timeout=self.timeout) as resp:
+                    return resp.read()
+            except HTTPError as exc:
+                if exc.code in self.RETRYABLE_CODES and attempt < self.max_retries:
+                    time.sleep(2 ** (attempt - 1))
+                    continue
+                raise RuntimeError(
+                    f"HTTP {exc.code} {exc.reason} downloading {url}"
+                ) from exc
+            except URLError as exc:
+                if attempt < self.max_retries:
+                    time.sleep(2 ** (attempt - 1))
+                    continue
+                raise
+
 
 # ---------------------------------------------------------------------------
 # Config
@@ -202,6 +223,14 @@ TOOL_CATALOG = {
         "params": {
             "page_id": {"type": "str", "required": True, "desc": "Page ID"},
             "include_resolved": {"type": "bool", "default": False, "desc": "Include resolved comments"},
+        },
+    },
+    "confluence_download_attachment": {
+        "desc": "Download a Confluence page attachment and save it to a local file",
+        "params": {
+            "page_id": {"type": "str", "required": True, "desc": "Page ID"},
+            "filename": {"type": "str", "required": True, "desc": "Attachment filename (e.g. image2026-3-2_12-43-24.png)"},
+            "output_path": {"type": "str", "required": False, "desc": "Directory to save file (defaults to system temp dir)"},
         },
     },
     "atlassian_get_notifications": {
@@ -606,6 +635,51 @@ def tool_confluence_get_inline_comments(conf: AtlassianClient, args: dict) -> di
         "totalOpen": total_open,
         "totalAll": total_all,
         "comments": out_comments,
+    }
+
+
+def tool_confluence_download_attachment(conf: AtlassianClient, args: dict) -> dict:
+    """Download a Confluence page attachment and save it to a local file."""
+    page_id = _str(args, "page_id")
+    filename = _str(args, "filename")
+    output_path = _str(args, "output_path") or ""
+
+    if not page_id:
+        raise ValueError("page_id is required")
+    if not filename:
+        raise ValueError("filename is required")
+
+    # Step 1: find attachment ID by filename via REST API
+    params = {"filename": filename, "limit": "1", "expand": "version"}
+    resp = conf.get(f"/rest/api/content/{quote(page_id)}/child/attachment", params)
+    results = resp.get("results", [])
+    if not results:
+        raise RuntimeError(f"Attachment '{filename}' not found on page {page_id}")
+
+    attachment = results[0]
+    att_id = attachment.get("id", "")
+    download_link = attachment.get("_links", {}).get("download", "")
+    if not download_link:
+        raise RuntimeError(f"No download link for attachment '{filename}'")
+
+    # Step 2: download binary content via REST API (accepts Basic auth)
+    data = conf.download(download_link)
+
+    # Step 3: determine output path
+    if not output_path:
+        import tempfile
+        output_path = str(Path(tempfile.gettempdir()) / filename)
+    else:
+        output_path = str(Path(output_path) / filename) if not output_path.endswith(filename) else output_path
+
+    with open(output_path, "wb") as f:
+        f.write(data)
+
+    return {
+        "saved_to": output_path,
+        "size_bytes": len(data),
+        "attachment_id": att_id,
+        "filename": filename,
     }
 
 
@@ -1122,6 +1196,7 @@ TOOL_DISPATCH = {
     "confluence_get_page_ancestors": ("confluence", tool_confluence_get_page_ancestors),
     "confluence_get_comments": ("confluence", tool_confluence_get_comments),
     "confluence_get_inline_comments": ("confluence", tool_confluence_get_inline_comments),
+    "confluence_download_attachment": ("confluence", tool_confluence_download_attachment),
     "atlassian_get_notifications": ("confluence", tool_atlassian_get_notifications),
     "confluence_create_page": ("confluence", tool_confluence_create_page),
     "confluence_update_page": ("confluence", tool_confluence_update_page),
