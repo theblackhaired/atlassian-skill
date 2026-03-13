@@ -225,6 +225,12 @@ TOOL_CATALOG = {
             "include_resolved": {"type": "bool", "default": False, "desc": "Include resolved comments"},
         },
     },
+    "confluence_resolve_comment": {
+        "desc": "Resolve (close) an inline comment on a Confluence page",
+        "params": {
+            "commentId": {"type": "str", "required": True, "desc": "Inline comment ID to resolve"},
+        },
+    },
     "confluence_download_attachment": {
         "desc": "Download a Confluence page attachment and save it to a local file",
         "params": {
@@ -636,6 +642,19 @@ def tool_confluence_get_inline_comments(conf: AtlassianClient, args: dict) -> di
         "totalAll": total_all,
         "comments": out_comments,
     }
+
+
+def tool_confluence_resolve_comment(conf: AtlassianClient, args: dict) -> dict:
+    """Resolve (close) an inline comment on a Confluence page."""
+    comment_id = _str(args, "commentId")
+    if not comment_id:
+        raise ValueError("commentId is required")
+
+    conf.put(
+        f"/rest/inlinecomments/1.0/comments/{quote(comment_id)}/resolve/true/dangling/false",
+        None,
+    )
+    return {"success": True, "commentId": comment_id}
 
 
 def tool_confluence_download_attachment(conf: AtlassianClient, args: dict) -> dict:
@@ -1196,6 +1215,7 @@ TOOL_DISPATCH = {
     "confluence_get_page_ancestors": ("confluence", tool_confluence_get_page_ancestors),
     "confluence_get_comments": ("confluence", tool_confluence_get_comments),
     "confluence_get_inline_comments": ("confluence", tool_confluence_get_inline_comments),
+    "confluence_resolve_comment": ("confluence", tool_confluence_resolve_comment),
     "confluence_download_attachment": ("confluence", tool_confluence_download_attachment),
     "atlassian_get_notifications": ("confluence", tool_atlassian_get_notifications),
     "confluence_create_page": ("confluence", tool_confluence_create_page),
@@ -1223,6 +1243,7 @@ TOOL_DISPATCH = {
 
 WRITE_TOOLS = {
     "confluence_create_page", "confluence_update_page", "confluence_delete_page",
+    "confluence_resolve_comment",
     "jira_create_issue", "jira_update_issue", "jira_delete_issue",
     "jira_add_comment", "jira_add_worklog", "jira_transition_issue", "jira_link_to_epic",
 }

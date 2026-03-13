@@ -1,6 +1,6 @@
 ---
 name: atlassian
-description: Direct REST API client for Jira + Confluence (28 tools)
+description: Direct REST API client for Jira + Confluence (29 tools)
 version: 2.0.0
 ---
 
@@ -10,7 +10,7 @@ Direct REST API client for Jira and Confluence. No external dependencies -- uses
 
 ## Available Tools
 
-### Confluence Tools (11 tools)
+### Confluence Tools (12 tools)
 
 **Read Operations:**
 - `confluence_search`: Search Confluence content using simple terms or CQL
@@ -27,6 +27,7 @@ Direct REST API client for Jira and Confluence. No external dependencies -- uses
 - `confluence_create_page`: Create a new Confluence page
 - `confluence_update_page`: Update an existing Confluence page
 - `confluence_delete_page`: Delete an existing Confluence page
+- `confluence_resolve_comment`: Resolve (close) an inline comment by ID
 
 ### Jira Tools (17 tools)
 
@@ -201,14 +202,31 @@ Or via `--call`:
 python cli.py --call "{\"tool\": \"confluence_get_inline_comments\", \"arguments\": {\"page_id\": \"125244512\"}}"
 ```
 
-### Example 8: Create Jira Issue
+### Example 8: Resolve an Inline Comment
+
+```bash
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"confluence_resolve_comment\", \"arguments\": {\"commentId\": \"125245862\"}}"
+```
+
+Returns:
+```json
+{
+  "success": true,
+  "commentId": "125245862"
+}
+```
+
+> Note: the `commentId` is the numeric ID from `confluence_get_inline_comments` output (e.g. `"id": 125245862`). Pass it as a string.
+
+### Example 10: Create Jira Issue
 
 ```bash
 cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --call "{\"tool\": \"jira_create_issue\", \"arguments\": {\"project_key\": \"PROJ\", \"summary\": \"New task\", \"issue_type\": \"Task\"}}"
 ```
 
-### Example 9: Transition Issue
+### Example 11: Transition Issue
 
 ```bash
 cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
