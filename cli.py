@@ -259,9 +259,9 @@ TOOL_CATALOG = {
         "desc": "Update an existing Confluence page",
         "params": {
             "page_id": {"type": "str", "required": True, "desc": "Page ID"},
-            "title": {"type": "str", "required": True, "desc": "New title"},
-            "body": {"type": "str", "required": True, "desc": "New HTML body"},
-            "version": {"type": "int", "required": True, "desc": "Version number (current+1)"},
+            "title": {"type": "str", "required": False, "desc": "New title (auto-fetched if omitted)"},
+            "body": {"type": "str", "required": True, "desc": "New HTML body (or @file:path to read from file)"},
+            "version": {"type": "int", "required": False, "desc": "Version number (auto-incremented if omitted)"},
         },
     },
     "confluence_delete_page": {
@@ -751,8 +751,23 @@ def tool_confluence_update_page(conf: AtlassianClient, args: dict) -> dict:
     body = _str(args, "body")
     version = _int(args, "version")
 
-    if not all([page_id, title, body, version]):
-        raise ValueError("page_id, title, body and version are required")
+    if not page_id or not body:
+        raise ValueError("page_id and body are required")
+
+    # Support @file:path syntax for large bodies
+    if body.startswith("@file:"):
+        file_path = body[6:]
+        with open(file_path, "r", encoding="utf-8") as f:
+            body = f.read()
+
+    # Auto-fetch title and version if not provided
+    if not title or not version:
+        current = conf.get(f"/rest/api/content/{quote(page_id)}",
+                           {"expand": "version"})
+        if not title:
+            title = current.get("title", "")
+        if not version:
+            version = current.get("version", {}).get("number", 0) + 1
 
     payload = {
         "type": "page",
@@ -1258,6 +1273,8 @@ def main():
         description="Atlassian Skill CLI -- direct REST API client for Jira + Confluence"
     )
     parser.add_argument("--call", help="JSON tool call: {\"tool\":\"...\",\"arguments\":{...}}")
+    parser.add_argument("--call-file", metavar="PATH",
+                        help="Read JSON tool call from file (for large payloads that exceed CLI arg limits)")
     parser.add_argument("--describe", help="Show tool schema by name")
     parser.add_argument("--list", action="store_true", help="List all available tools")
     parser.add_argument(
@@ -1319,10 +1336,21 @@ def main():
             sys.exit(1)
         return
 
-    # -- --call -------------------------------------------------------------
-    if cli_args.call:
+    # -- --call / --call-file -----------------------------------------------
+    call_source = cli_args.call or None
+    call_file = getattr(cli_args, 'call_file', None)
+
+    if call_file:
         try:
-            call_data = json.loads(cli_args.call)
+            with open(call_file, "r", encoding="utf-8") as f:
+                call_source = f.read()
+        except (OSError, IOError) as exc:
+            print(f"Cannot read call file: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if call_source:
+        try:
+            call_data = json.loads(call_source)
         except json.JSONDecodeError as exc:
             print(f"Invalid JSON: {exc}", file=sys.stderr)
             sys.exit(1)
