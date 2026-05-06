@@ -1,6 +1,6 @@
 ---
 name: atlassian
-description: Direct REST API client for Jira + Confluence (29 tools)
+description: Direct REST API client for Jira + Confluence (33 tools)
 version: 2.0.0
 ---
 
@@ -10,7 +10,7 @@ Direct REST API client for Jira and Confluence. No external dependencies -- uses
 
 ## Available Tools
 
-### Confluence Tools (12 tools)
+### Confluence Tools (16 tools)
 
 **Read Operations:**
 - `confluence_search`: Search Confluence content using simple terms or CQL
@@ -19,6 +19,12 @@ Direct REST API client for Jira and Confluence. No external dependencies -- uses
 - `confluence_get_page_ancestors`: Get ancestor (parent) pages of a specific Confluence page
 - `confluence_get_comments`: Get regular comments for a specific Confluence page
 - `confluence_get_inline_comments`: Get inline (in-text) comments for a page
+
+**History Operations:**
+- `confluence_get_page_history`: Get basic history info (creator, last update, contributors, latest version) for a page
+- `confluence_get_page_versions`: List all versions of a page (paginated)
+- `confluence_get_page_version`: Get content of a specific historical version of a page
+- `confluence_compare_page_versions`: Compute a unified-diff between two versions of a page (text or html mode)
 
 **Notification Operations:**
 - `atlassian_get_notifications`: Get user notifications from Atlassian workbox (Jira + Confluence)
@@ -232,6 +238,13 @@ python cli.py --call "{\"tool\": \"jira_create_issue\", \"arguments\": {\"projec
 cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
 python cli.py --call "{\"tool\": \"jira_get_transitions\", \"arguments\": {\"issue_key\": \"PROJ-123\"}}"
 python cli.py --call "{\"tool\": \"jira_transition_issue\", \"arguments\": {\"issue_key\": \"PROJ-123\", \"transition_id\": \"31\"}}"
+```
+
+### Example 12: Compare Confluence Page Versions
+
+```bash
+cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"
+python cli.py --call "{\"tool\": \"confluence_compare_page_versions\", \"arguments\": {\"page_id\": \"125244512\", \"version_from\": 1, \"version_to\": 2}}"
 ```
 
 ## Inline Comments (Direct API)

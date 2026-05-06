@@ -2,3 +2,12 @@ config.json
 __pycache__/
 *.pyc
 .env
+nul
+fragment.txt
+tmp_*.txt
+tmp_*.json
+_*.json
+_*.txt
+logs/
+.omc/
+docs/plans/_*.json

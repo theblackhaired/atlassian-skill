@@ -211,6 +211,38 @@ TOOL_CATALOG = {
             "page_id": {"type": "str", "required": True, "desc": "Page ID"},
         },
     },
+    "confluence_get_page_history": {
+        "desc": "Get basic history info for a Confluence page",
+        "params": {
+            "page_id": {"type": "str", "required": True, "desc": "Page ID"},
+        },
+    },
+    "confluence_get_page_versions": {
+        "desc": "List versions of a Confluence page",
+        "params": {
+            "page_id": {"type": "str", "required": True, "desc": "Page ID"},
+            "limit": {"type": "int", "default": 25, "desc": "Max results to return"},
+            "start": {"type": "int", "default": 0, "desc": "Pagination offset"},
+            "expand_message": {"type": "bool", "default": True, "desc": "Include message field"},
+        },
+    },
+    "confluence_get_page_version": {
+        "desc": "Get content of a specific historical page version",
+        "params": {
+            "page_id": {"type": "str", "required": True, "desc": "Page ID"},
+            "version": {"type": "int", "required": True, "desc": "Version number to retrieve"},
+        },
+    },
+    "confluence_compare_page_versions": {
+        "desc": "Compute a unified diff between two versions of a page",
+        "params": {
+            "page_id": {"type": "str", "required": True, "desc": "Page ID"},
+            "version_from": {"type": "int", "required": True, "desc": "Older version number"},
+            "version_to": {"type": "int", "required": True, "desc": "Newer version number"},
+            "format": {"type": "str", "default": "text", "desc": "text or html"},
+            "context": {"type": "int", "default": 3, "desc": "Number of context lines"},
+        },
+    },
     "confluence_get_comments": {
         "desc": "Get regular comments for a specific Confluence page",
         "params": {
@@ -426,6 +458,19 @@ def _bool(args: dict, key: str, default=False) -> bool:
     return bool(v)
 
 
+def _strip_html_for_diff(s: str) -> str:
+    import re
+    import html as _html_mod
+    if not s:
+        return ""
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.I)
+    s = re.sub(r"</(p|li|tr|h[1-6]|div)>", "\n", s, flags=re.I)
+    s = re.sub(r"<[^>]+>", "", s)
+    s = _html_mod.unescape(s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+
 # ---------------------------------------------------------------------------
 # Confluence tool implementations
 # ---------------------------------------------------------------------------
@@ -520,6 +565,172 @@ def tool_confluence_get_page_ancestors(conf: AtlassianClient, args: dict) -> dic
         {"id": a.get("id"), "title": a.get("title")}
         for a in resp.get("results", [])
     ]
+
+
+def tool_confluence_get_page_history(conf: AtlassianClient, args: dict) -> dict:
+    page_id = _str(args, "page_id")
+    if not page_id:
+        raise ValueError("page_id is required")
+
+    params = {"expand": "lastUpdated,previousVersion,contributors.publishers.users"}
+    resp = conf.get(f"/rest/api/content/{quote(page_id)}/history", params)
+    latest = resp.get("lastUpdated", {})
+    latest_by = latest.get("by", {})
+    created_by = resp.get("createdBy", {})
+    publishers = resp.get("contributors", {}).get("publishers", {})
+    users = publishers.get("users", []) or []
+    contributors = [
+        {"username": u.get("username"), "displayName": u.get("displayName")}
+        for u in users
+        if isinstance(u, dict)
+    ]
+    return {
+        "pageId": page_id,
+        "latestVersion": {
+            "number": latest.get("number"),
+            "when": latest.get("when"),
+            "by": latest_by.get("username"),
+            "byDisplayName": latest_by.get("displayName"),
+            "message": latest.get("message"),
+            "minorEdit": latest.get("minorEdit"),
+        },
+        "createdBy": created_by.get("username"),
+        "createdByDisplayName": created_by.get("displayName"),
+        "createdDate": resp.get("createdDate"),
+        "contributors": contributors,
+    }
+
+
+def tool_confluence_get_page_versions(conf: AtlassianClient, args: dict) -> dict:
+    page_id = _str(args, "page_id")
+    if not page_id:
+        raise ValueError("page_id is required")
+    limit = _int(args, "limit", 25)
+    start = _int(args, "start", 0)
+    expand_message = _bool(args, "expand_message", True)
+
+    params = {"start": str(start), "limit": str(limit)}
+    resp = conf.get(f"/rest/experimental/content/{quote(page_id)}/version", params)
+    versions = []
+    for v in resp.get("results", []):
+        by = v.get("by", {})
+        item = {
+            "number": v.get("number"),
+            "when": v.get("when"),
+            "by": by.get("username"),
+            "byDisplayName": by.get("displayName"),
+        }
+        if expand_message:
+            item["message"] = v.get("message")
+        item["minorEdit"] = v.get("minorEdit")
+        versions.append(item)
+    return {
+        "pageId": page_id,
+        "size": resp.get("size", len(versions)),
+        "start": resp.get("start", start),
+        "limit": resp.get("limit", limit),
+        "versions": versions,
+    }
+
+
+def tool_confluence_get_page_version(conf: AtlassianClient, args: dict) -> dict:
+    page_id = _str(args, "page_id")
+    if not page_id:
+        raise ValueError("page_id is required")
+    version_num = _int(args, "version")
+    if version_num is None or version_num < 1:
+        raise ValueError("version must be >= 1")
+
+    params = {
+        "status": "historical",
+        "version": str(version_num),
+        "expand": "body.storage,version,space",
+    }
+    resp = conf.get(f"/rest/api/content/{quote(page_id)}", params)
+    space = resp.get("space", {})
+    version = resp.get("version", {})
+    by = version.get("by", {})
+    body = resp.get("body", {}).get("storage", {}).get("value", "")
+    return {
+        "id": resp.get("id"),
+        "title": resp.get("title"),
+        "space": space.get("key"),
+        "versionNumber": version.get("number"),
+        "versionWhen": version.get("when"),
+        "versionBy": by.get("username"),
+        "versionByDisplayName": by.get("displayName"),
+        "versionMessage": version.get("message", ""),
+        "versionMinorEdit": version.get("minorEdit", False),
+        "body": body,
+        "url": conf.base_url + resp.get("_links", {}).get("webui", ""),
+    }
+
+
+def tool_confluence_compare_page_versions(conf: AtlassianClient, args: dict) -> dict:
+    page_id = _str(args, "page_id")
+    if not page_id:
+        raise ValueError("page_id is required")
+    v_from = _int(args, "version_from")
+    v_to = _int(args, "version_to")
+    fmt = _str(args, "format", "text")
+    ctx = _int(args, "context", 3)
+    if fmt not in ("text", "html"):
+        raise ValueError("format must be 'text' or 'html'")
+    swapped = False
+    if v_to < v_from:
+        v_from, v_to = v_to, v_from
+        swapped = True
+
+    page_from = tool_confluence_get_page_version(conf, {"page_id": page_id, "version": v_from})
+    page_to = tool_confluence_get_page_version(conf, {"page_id": page_id, "version": v_to})
+    from_text = _strip_html_for_diff(page_from["body"]) if fmt == "text" else page_from["body"]
+    to_text = _strip_html_for_diff(page_to["body"]) if fmt == "text" else page_to["body"]
+
+    if v_from == v_to:
+        return {
+            "pageId": page_id,
+            "versionFrom": v_from,
+            "versionTo": v_to,
+            "swapped": swapped,
+            "format": fmt,
+            "diff": "",
+            "stats": {
+                "linesAdded": 0,
+                "linesRemoved": 0,
+                "fromLength": len(from_text),
+                "toLength": len(to_text),
+            },
+        }
+
+    from_lines = from_text.splitlines(keepends=False)
+    to_lines = to_text.splitlines(keepends=False)
+    from_label = f"v{v_from} ({page_from['versionWhen']} {page_from['versionBy']})"
+    to_label = f"v{v_to} ({page_to['versionWhen']} {page_to['versionBy']})"
+    import difflib
+    diff_lines = list(difflib.unified_diff(
+        from_lines,
+        to_lines,
+        fromfile=from_label,
+        tofile=to_label,
+        n=ctx,
+        lineterm="",
+    ))
+    added = sum(1 for line in diff_lines if line.startswith("+") and not line.startswith("+++"))
+    removed = sum(1 for line in diff_lines if line.startswith("-") and not line.startswith("---"))
+    return {
+        "pageId": page_id,
+        "versionFrom": v_from,
+        "versionTo": v_to,
+        "swapped": swapped,
+        "format": fmt,
+        "diff": "\n".join(diff_lines),
+        "stats": {
+            "linesAdded": added,
+            "linesRemoved": removed,
+            "fromLength": len(from_text),
+            "toLength": len(to_text),
+        },
+    }
 
 
 def tool_confluence_get_comments(conf: AtlassianClient, args: dict) -> dict:
@@ -1228,6 +1439,10 @@ TOOL_DISPATCH = {
     "confluence_get_page": ("confluence", tool_confluence_get_page),
     "confluence_get_page_children": ("confluence", tool_confluence_get_page_children),
     "confluence_get_page_ancestors": ("confluence", tool_confluence_get_page_ancestors),
+    "confluence_get_page_history": ("confluence", tool_confluence_get_page_history),
+    "confluence_get_page_versions": ("confluence", tool_confluence_get_page_versions),
+    "confluence_get_page_version": ("confluence", tool_confluence_get_page_version),
+    "confluence_compare_page_versions": ("confluence", tool_confluence_compare_page_versions),
     "confluence_get_comments": ("confluence", tool_confluence_get_comments),
     "confluence_get_inline_comments": ("confluence", tool_confluence_get_inline_comments),
     "confluence_resolve_comment": ("confluence", tool_confluence_resolve_comment),
