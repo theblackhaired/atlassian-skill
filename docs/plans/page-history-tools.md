@@ -47,8 +47,8 @@ Add 4 read-only tools for working with Confluence page history. **No write opera
   "latestVersion": {
     "number": 78,
     "when": "2026-04-29T08:14:23Z",
-    "by": "kirill.gorosov",
-    "byDisplayName": "Kirill Gorosov",
+    "by": "user",
+    "byDisplayName": "User",
     "message": "fix typo",
     "minorEdit": false
   },
@@ -56,8 +56,7 @@ Add 4 read-only tools for working with Confluence page history. **No write opera
   "createdByDisplayName": "Anna Starostina",
   "createdDate": "2026-02-06T11:04:11Z",
   "contributors": [
-    {"username": "kirill.gorosov", "displayName": "Kirill Gorosov"},
-    {"username": "anna.starostina", "displayName": "Anna Starostina"}
+    {"username": "kirill.gorosov", "displayName": "Kirill Gorosov"}
   ]
 }
 ```
@@ -96,8 +95,8 @@ Field mapping (use `.get()` chains, gracefully fall back to empty/None):
     {
       "number": 17,
       "when": "2026-04-29T08:14:23Z",
-      "by": "kirill.gorosov",
-      "byDisplayName": "Kirill Gorosov",
+      "by": "user",
+      "byDisplayName": "user",
       "message": "fix typo",
       "minorEdit": false
     }
@@ -116,21 +115,7 @@ Field mapping (use `.get()` chains, gracefully fall back to empty/None):
 | `version` | int | yes | — | Version number to retrieve (1-based, like `confluence_get_page_versions[].number`) |
 
 **Returned shape (mirrors `confluence_get_page` plus `versionNumber`):**
-```json
-{
-  "id": "125244512",
-  "title": "Тарифы UVSS",
-  "space": "UVSS",
-  "versionNumber": 5,
-  "versionWhen": "2026-03-15T09:42:11Z",
-  "versionBy": "anna.starostina",
-  "versionByDisplayName": "Anna Starostina",
-  "versionMessage": "draft v5",
-  "versionMinorEdit": false,
-  "body": "<p>...HTML storage format...</p>",
-  "url": "https://rnd.iss.ru/pages/viewpage.action?pageId=125244512"
-}
-```
+
 
 If the requested version does not exist, the underlying API returns HTTP 404 — let it raise (the existing `_request` already wraps 404 with a meaningful message).
 
