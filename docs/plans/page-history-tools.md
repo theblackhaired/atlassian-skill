@@ -4,7 +4,7 @@
 
 ## Context
 
-Skill location: `C:\Users\kirill.gorosov\.claude\skills\atlassian\`
+Skill location: `~/.claude/skills/atlassian/`
 Main file: `cli.py` (1398 lines, Python 3.8+ stdlib only — `urllib`, `json`, `ssl`, `base64`, `difflib`).
 Doc file: `SKILL.md`
 Config: `config.json` with `confluence_url=https://rnd.iss.ru`, `read_only: true`.
@@ -52,11 +52,11 @@ Add 4 read-only tools for working with Confluence page history. **No write opera
     "message": "fix typo",
     "minorEdit": false
   },
-  "createdBy": "anna.starostina",
-  "createdByDisplayName": "Anna Starostina",
+  "createdBy": "jdoe",
+  "createdByDisplayName": "Jane Doe",
   "createdDate": "2026-02-06T11:04:11Z",
   "contributors": [
-    {"username": "kirill.gorosov", "displayName": "Kirill Gorosov"}
+    {"username": "jsmith", "displayName": "John Smith"}
   ]
 }
 ```
@@ -140,7 +140,7 @@ If the requested version does not exist, the underlying API returns HTTP 404 —
   "versionTo": 7,
   "swapped": false,
   "format": "text",
-  "diff": "--- v5 (2026-03-15T09:42:11Z anna.starostina)\n+++ v7 (2026-04-01T10:11:00Z kirill.gorosov)\n@@ -3,5 +3,7 @@\n ...",
+  "diff": "--- v5 (2026-03-15T09:42:11Z jdoe)\n+++ v7 (2026-04-01T10:11:00Z jsmith)\n@@ -3,5 +3,7 @@\n ...",
   "stats": {
     "linesAdded": 12,
     "linesRemoved": 4,
@@ -171,7 +171,7 @@ If the requested version does not exist, the underlying API returns HTTP 404 —
   **Goal:** confirm the three endpoints work on `rnd.iss.ru` against a known small page. Pick a page ID — use **`125244512`** (referenced in `SKILL.md` examples; if it 404s, search via `confluence_search` for any small page in space `UVSS` and use its ID; record the chosen ID in the run log).
 
   **Steps:**
-  1. `cd "C:\Users\kirill.gorosov\.claude\skills\atlassian"`.
+  1. `cd ~/.claude/skills/atlassian`.
   2. Run a tiny Python smoke script (do NOT save it as a permanent file — run inline via `python -c` and write only the JSON output to `docs/plans/_t001-probe.json`):
      - `GET /rest/api/content/{id}/history?expand=lastUpdated,contributors.publishers.users`
      - `GET /rest/api/content/{id}/version?limit=5&start=0`
