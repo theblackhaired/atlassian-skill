@@ -47,8 +47,8 @@ Add 4 read-only tools for working with Confluence page history. **No write opera
   "latestVersion": {
     "number": 78,
     "when": "2026-04-29T08:14:23Z",
-    "by": "user",
-    "byDisplayName": "User",
+    "by": "jsmith",
+    "byDisplayName": "John Smith",
     "message": "fix typo",
     "minorEdit": false
   },
@@ -56,7 +56,8 @@ Add 4 read-only tools for working with Confluence page history. **No write opera
   "createdByDisplayName": "Jane Doe",
   "createdDate": "2026-02-06T11:04:11Z",
   "contributors": [
-    {"username": "jsmith", "displayName": "John Smith"}
+    {"username": "jsmith", "displayName": "John Smith"},
+    {"username": "jdoe", "displayName": "Jane Doe"}
   ]
 }
 ```
@@ -95,8 +96,8 @@ Field mapping (use `.get()` chains, gracefully fall back to empty/None):
     {
       "number": 17,
       "when": "2026-04-29T08:14:23Z",
-      "by": "user",
-      "byDisplayName": "user",
+      "by": "jsmith",
+      "byDisplayName": "John Smith",
       "message": "fix typo",
       "minorEdit": false
     }
@@ -115,7 +116,21 @@ Field mapping (use `.get()` chains, gracefully fall back to empty/None):
 | `version` | int | yes | — | Version number to retrieve (1-based, like `confluence_get_page_versions[].number`) |
 
 **Returned shape (mirrors `confluence_get_page` plus `versionNumber`):**
-
+```json
+{
+  "id": "125244512",
+  "title": "Example Page Title",
+  "space": "DEMO",
+  "versionNumber": 5,
+  "versionWhen": "2026-03-15T09:42:11Z",
+  "versionBy": "jdoe",
+  "versionByDisplayName": "Jane Doe",
+  "versionMessage": "draft v5",
+  "versionMinorEdit": false,
+  "body": "<p>...HTML storage format...</p>",
+  "url": "https://confluence.example.com/pages/viewpage.action?pageId=125244512"
+}
+```
 
 If the requested version does not exist, the underlying API returns HTTP 404 — let it raise (the existing `_request` already wraps 404 with a meaningful message).
 
@@ -168,7 +183,7 @@ If the requested version does not exist, the underlying API returns HTTP 404 —
   - Versions list: `/rest/experimental/content/{id}/version` (NOT `/rest/api/.../version` which 404s)
   - Single version body: `/rest/api/content/{id}?status=historical&version=N&expand=body.storage,version,space`
 
-  **Goal:** confirm the three endpoints work on `rnd.iss.ru` against a known small page. Pick a page ID — use **`125244512`** (referenced in `SKILL.md` examples; if it 404s, search via `confluence_search` for any small page in space `UVSS` and use its ID; record the chosen ID in the run log).
+  **Goal:** confirm the three endpoints work on `rnd.iss.ru` against a known small page. Pick a page ID — use **`125244512`** (referenced in `SKILL.md` examples; if it 404s, search via `confluence_search` for any small page in any available space and use its ID; record the chosen ID in the run log).
 
   **Steps:**
   1. `cd ~/.claude/skills/atlassian`.
